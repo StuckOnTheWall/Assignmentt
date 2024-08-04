@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zxx">
+
+<head>
+    <title>SP Games - Add Game</title>
+    <meta charset="UTF-8">
+    <meta name="description" content="EndGam Gaming Magazine Template">
+    <meta name="keywords" content="endGam,gGaming, magazine, html">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- logo -->
+    <link href="./img/logo4.1.png" rel="shortcut icon" />
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,400i,500,500i,700,700i,900,900i" rel="stylesheet">
+
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/font-awesome.min.css" />
+    <link rel="stylesheet" href="css/slicknav.min.css" />
+    <link rel="stylesheet" href="css/owl.carousel.min.css" />
+    <link rel="stylesheet" href="css/magnific-popup.css" />
+    <link rel="stylesheet" href="css/animate.css" />
+
+    <!-- Main Stylesheets -->
+    <link rel="stylesheet" href="css/style.css" />
+
+
+    <!--[if lt IE 9]>
+		  <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+	  <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+	<![endif]-->
+
+</head>
+
+<script>
+
+
+
+    // Function to print categories
+    function printCategories(categories) {
+        $("#category").empty(); // Clear existing content
+
+        for (var i = 0; i < categories.length; i++) {
+            var category = categories[i].catname; // Get the category name from the data
+            var option = `<input type="checkbox" id="${category}" name="category" value="${category}">
+                          <label for="${category}">${category}</label><br>`;
+            $("#category").append(option); // Append each category checkbox
+        }
+    }
+
+
+    // Function to print platforms
+    function printPlatforms(platforms) {
+        $("#platform").empty(); // Clear existing content
+
+        for (var i = 0; i < platforms.length; i++) {
+            var platform = platforms[i].platform_name;
+            var option = `<input type="checkbox" id="${platform}" name="platform" value="${platform}">
+                          <label for="${platform}">${platform}</label><br>`;
+            $("#platform").append(option); // Append each platform checkbox
+        }
+    }
+
+
+
+    $(document).ready(function () {
+
+        var catData = [];
+        var platData = [];
+
+        // Print Categories
+        $.ajax({
+            url: "http://localhost:8081/category/",
+            type: "GET",
+            contentType: "application/json",
+            dataType: "json",
+            success: function (data, textStatus, xhr) {
+
+                catData = data;
+                printCategories(data);
+
+                // Print Platforms
+                $.ajax({
+                    url: "http://localhost:8081/platform/",
+                    type: "GET",
+                    contentType: "application/json",
+                    dataType: "json",
+                    success: function (data, textStatus, xhr) {
+
+                        platData = data;
+                        printPlatforms(data);
+
+                        $('#submit-Game').click(function () {
+
+                            var formData = new FormData();
+                            var imageFile = $('#GameImage')[0].files[0];
+                            formData.append('title', $('#GameTitle').val());
+                            formData.append('description', $('#GameDescription').val());
+                            formData.append('game_image', imageFile);
+                            formData.append('year', $('#GameYear').val());
+                            formData.append('price', $('#GamePrice').val());
+
+
+                            // Get checked platforms
+                            var checkedPlatforms = [];
+                            var platCheckbox = $('input[name="platform"]:checked');
+                            for (var i = 0; i < platCheckbox.length; i++) {
+
+                                var platform_name = $(platCheckbox[i]).val()
+
+                                function getPlatID(platform_name) {
+
+                                    for (var x = 0; x < platData.length; x++) {
+
+                                        if (platData[x].platform_name === platform_name) {
+
+                                            return platData[x].platID;
+                                        }
+                                    }
+
+                                    return null;
+                                }
+
+                                checkedPlatforms.push(getPlatID(platform_name));
+                            }
+
+                            var platformString = checkedPlatforms.join(',');
+                            formData.append('platformid', platformString);
+
+
+                            // Get selected categories
+                            var checkedCategories = [];
+                            var catCheckbox = $('input[name="category"]:checked');
+                            for (var i = 0; i < catCheckbox.length; i++) {
+
+                                var catname = $(catCheckbox[i]).val()
+
+                                function getCatID(catname) {
+
+                                    for (var x = 0; x < catData.length; x++) {
+
+                                        if (catData[x].catname === catname) {
+
+                                            return catData[x].catID;
+                                        }
+                                    }
+
+                                    return null;
+                                }
+
+                                checkedCategories.push(getCatID(catname));
+                            }
+
+                            var categoryString = checkedCategories.join(',');
+                            formData.append('categoryid', categoryString);
+
+
+                            // Send data to server
+                            $.ajax({
+                                url: "http://localhost:8081/game",
+                                type: "POST",
+                                data: formData,
+                                headers: { "authorization": "Bearer " + token },
+                                contentType: false,
+                                processData: false,
+                                success: function (data) {
+
+                                    alert("Game added successfully.");
+                                },
+                                error: function (xhr, textStatus, err) {
+
+                                    console.log(err);
+                                    alert("Failed to add game.");
+                                }
+                            });
+                        });
+                    },
+
+                    error: function (xhr, textStatus, err) {
+                        console.log(err);
+                    }
+                });
+            },
+            
+            error: function (xhr, textStatus, err) {
+                console.log(err);
+            }
+        });
+
+
+
+
+
+        // Check user role
+        function checkRole(token) {
+
+            // Token Verification
+            $.ajax({
+                url: 'http://localhost:8081/CheckRole',
+                type: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function (data) {
+
+                    // Check if user is admin
+                    if (data.role === 'Admin') {
+
+                        // Show admin tabs
+                        $('.admin-tab').show();
+
+                    } else {
+                        // Hide admin tabs
+                        $('.admin-tab').hide();
+                    }
+                },
+
+                error: function (xhr, textStatus, error) {
+                    console.log(error);
+                }
+            });
+        }
+
+        // Check token and user role
+        const token = localStorage.getItem('Token');
+        if (token) {
+
+            checkRole(token);
+        }
+
+        else {
+
+            $('.admin-tab').hide();
+        }
+
+
+
+
+
+        //Logout function
+        $('#Logout').click(function () {
+
+            localStorage.clear();
+            alert("You have successfully Logged out.");
+
+        });
+
+
+    });
+
+
+</script>
+
+<body>
+    <!-- Page Preloder -->
+    <div id="preloder">
+        <div class="loader"></div>
+    </div>
+
+
+    <!-- Header section -->
+    <header class="header-section">
+        <div class="header-warp">
+            <div class="header-social d-flex justify-content-end">
+                <p>Follow us:</p>
+                <a href="#"><i class="fa fa-instagram"></i></a>
+                <a href="#"><i class="fa fa-facebook"></i></a>
+                <a href="#"><i class="fa fa-twitter"></i></a>
+            </div>
+            <div class="header-bar-warp d-flex">
+                <!-- site logo -->
+                <a href="home.html" class="site-logo">
+                    <img src="./img/logo.png" alt="">
+                </a>
+                <nav class="top-nav-area w-100">
+                    <div class="user-panel">
+                        <div class="profile-dropdown">
+                            <span class="profile-dropdown__trigger"><img src="img/icons/white-down-arrow.png"
+                                    alt="#" />Profile</span>
+                            <ul class="profile-dropdown__menu">
+                                <li><a href="login.html">Login</a></li>
+                                <li><a href="" id="Logout">Logout</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Menu -->
+                    <div class="menu-container">
+                        <ul class="main-menu primary-menu">
+                            <li><a href="home.html">Home</a></li>
+                            <li><a href="games.html">Games</a></li>
+                            <li><a href="contact.html">Contact</a></li>
+                            <li class="admin-tab"><a href="AddPlatform.html">Add Platform</a></li>
+                            <li class="admin-tab"><a href="AddCategory.html">Add Category</a></li>
+                            <li class="admin-tab"><a href="AddGame.html">Add Game</a></li>
+                        </ul>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </header>
+    <!-- Header section end -->
+
+
+    <!-- Page top section -->
+    <section class="page-top-section set-bg" data-setbg="img/top-bg.jpg">
+        <div class="page-info">
+            <h2>Add Game</h2>
+            <div class="site-breadcrumb">
+                <a href="home.html">Home</a> /
+                <span>Add Game</span>
+            </div>
+        </div>
+    </section>
+    <!-- Page top end-->
+
+
+    <!-- Add Game section -->
+    <section class="games-single-page" id="Game-Info-Display">
+        <div class="container">
+            <div class="row">
+                <div class="col-xl-9 col-lg-8 col-md-7 game-single-content">
+                    <h2 class="gs-title" style="text-decoration: underline;">Add a New Game</h2>
+
+                    <h4>Title</h4>
+                    <form id="add_Game_Title">
+                        <input type="text" id="GameTitle" name="Title" style="margin-top: 10px; margin-bottom: 20px;"
+                            required>
+                    </form>
+
+                    <h4>Game Description</h4>
+                    <form id="add_Game_Description">
+                        <textarea id="GameDescription" name="content" style="margin-top: 10px; margin-bottom: 20px;"
+                            required></textarea>
+                    </form>
+
+                    <h4>Game Image</h4>
+                    <form id="add_Game_Image">
+                        <input type="file" id="GameImage" accept="image/jpeg"
+                            style="margin-top: 10px; margin-bottom: 20px; color:white;">
+                        <div id="ImagePreview"></div>
+                    </form>
+
+                    <h4>Game Price(comma seperated values eg 2 platforms will need 2 prices eg 60,80)</h4>
+                    <form id="add_Game_Price">
+                        <input type="text" id="GamePrice" name="price" style="margin-top: 10px; margin-bottom: 20px;"
+                            required>
+                    </form>
+
+                    <h4>Game Platform</h4>
+                    <form id="add_Game_Platform">
+                        <div id="platform"
+                            style="color: white; font-size:larger; margin-top: 10px; margin-bottom: 20px;"></div>
+                    </form>
+
+                    <h4>Game Category</h4>
+                    <form id="add_Game_Category">
+                        <div id="category"
+                            style="color: white; font-size:larger; margin-top: 10px; margin-bottom: 20px;"></div>
+                    </form>
+
+
+                    <h4>Game Published Year</h4>
+                    <form id="add_Game_Year">
+                        <input type="text" id="GameYear" name="year" style="margin-top: 10px; margin-bottom: 20px;"
+                            required>
+                    </form>
+                    <button type="button" id="submit-Game" style="margin-top: 50px; font-size: larger;">Submit</button>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Add Game end-->
+
+
+
+
+
+    <!-- Footer Section Begin -->
+    <footer class="footer">
+        <div class="page-up">
+            <a href="#" class="scrollToTopButton"><img src="img/icons/white-up-arrow.png" alt="#" /></span></a>
+        </div>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-3">
+                    <div class="footer__logo">
+                        <a href="home.html"><img src="img/logo.png" alt=""></a>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="footer__nav">
+                        <ul>
+                            <li><a href="home.html">Home</a></li>
+                            <li><a href="games.html">Games</a></li>
+                            <li><a href="contact.html">Contact</a></li>
+                            <li class="admin-tab"><a href="AddPlatform.html">Add Platform</a></li>
+                            <li class="admin-tab"><a href="AddCategory.html">Add Category</a></li>
+                            <li class="admin-tab"><a href="AddGame.html">Add Game</a></li>
+                        </ul>
+                        <div class="footer-social d-flex justify-content-center">
+                            <a href="#"><i class="fa fa-instagram"></i></a>
+                            <a href="#"><i class="fa fa-facebook"></i></a>
+                            <a href="#"><i class="fa fa-twitter"></i></a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-left-pic">
+            <img src="img/footer-left-pic.png" alt="">
+        </div>
+    </footer>
+
+    <!-- Footer Section End -->
+
+
+
+    <!--====== Javascripts & Jquery ======-->
+    <script src="js/jquery-3.2.1.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/jquery.slicknav.min.js"></script>
+    <script src="js/owl.carousel.min.js"></script>
+    <script src="js/jquery.sticky-sidebar.min.js"></script>
+    <script src="js/jquery.magnific-popup.min.js"></script>
+    <script src="js/main.js"></script>
+
+</body>
+
+</html>
